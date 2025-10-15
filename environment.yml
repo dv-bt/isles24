@@ -1,0 +1,16 @@
+name: "isles24"
+channels:
+  - conda-forge
+  - nodefaults
+dependencies:
+  - python=3.13
+  - scikit-learn
+  - pandas
+  - seaborn
+  - matplotlib
+  - jupyterlab
+  - monai
+  - pip
+  - pip:
+    - panoptica
+prefix: "/opt/conda"
