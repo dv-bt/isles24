@@ -10,6 +10,7 @@ dependencies:
   - matplotlib
   - jupyterlab
   - monai
+  - p7zip
   - pip
   - pip:
     - panoptica
