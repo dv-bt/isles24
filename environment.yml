@@ -11,7 +11,9 @@ dependencies:
   - jupyterlab
   - nibabel
   - monai
+  - hatchling
   - pip
   - pip:
     - panoptica
+    - -e ./isles
 prefix: "/opt/conda"

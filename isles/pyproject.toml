@@ -1,0 +1,14 @@
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[project]
+name = "isles"
+version = "0.1.0"
+requires-python = ">=3.12"
+description = "Ischemic Stroke Lesion Segmentation"
+readme = "README.md"
+authors = [{name = "Davide Bottone"}]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/isles"]
