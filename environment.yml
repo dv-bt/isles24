@@ -9,8 +9,8 @@ dependencies:
   - seaborn
   - matplotlib
   - jupyterlab
+  - nibabel
   - monai
-  - p7zip
   - pip
   - pip:
     - panoptica
