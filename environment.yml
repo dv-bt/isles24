@@ -12,8 +12,8 @@ dependencies:
   - nibabel
   - monai
   - hatchling
+  - panoptica
   - pip
   - pip:
-    - panoptica
     - -e ./isles
 prefix: "/opt/conda"
