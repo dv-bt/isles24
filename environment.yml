@@ -4,13 +4,14 @@ channels:
   - nodefaults
 dependencies:
   - python=3.12
+  - pytorch-gpu
   - scikit-learn
   - pandas
   - seaborn
   - matplotlib
   - jupyterlab
   - nibabel
-  - monai
+  - monai[fire]
   - hatchling
   - panoptica
   - pip
