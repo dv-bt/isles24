@@ -1,22 +1,20 @@
 name: "isles24"
 channels:
-  - pytorch
   - conda-forge
   - nodefaults
 dependencies:
   - python=3.12
-  - pytorch
-  - pytorch-cuda=12.4
   - scikit-learn
   - pandas
   - seaborn
   - matplotlib
   - jupyterlab
   - nibabel
-  - monai[fire]
   - hatchling
-  - panoptica
   - pip
   - pip:
+    - torch
+    - torchvision
+    - monai[fire]
     - -e ./isles
 prefix: "/opt/conda"
