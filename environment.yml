@@ -15,6 +15,6 @@ dependencies:
   - pip:
     - torch
     - torchvision
-    - monai[fire]
+    - monai[all]
     - -e ./isles
 prefix: "/opt/conda"
