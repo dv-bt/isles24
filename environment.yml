@@ -6,6 +6,7 @@ dependencies:
   - python=3.12
   - scikit-learn
   - pandas
+  - openpyxl
   - seaborn
   - matplotlib
   - jupyterlab
@@ -15,7 +16,8 @@ dependencies:
   - pip:
     - torch
     - torchvision
-    - wandb
+    - wandb[importers]
     - monai[all]
-    - -e ./isles
+    - panoptica
+    - -e .
 prefix: "/opt/conda"
