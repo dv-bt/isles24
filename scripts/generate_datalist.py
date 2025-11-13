@@ -10,12 +10,17 @@ from isles.io import parse_demo_data
 
 
 def assign_fold(
-    data_root: Path, strata_cols: list[str], n_folds: int, random_state: int
+    data_root: Path,
+    strata_cols: list[str],
+    n_folds: int,
+    random_state: int,
+    excluded_cases: list[str],
 ) -> pd.DataFrame:
     """Assign a fold to each case, using a stratifield K-fold split with strata_cols
     as targets, and return as dataframe."""
 
     data = parse_demo_data(data_root)
+    data = data.loc[~data["Case"].isin(excluded_cases)].reset_index(drop=True)
 
     skf = StratifiedKFold(n_splits=n_folds, shuffle=True, random_state=random_state)
     data["Stratum_Key"] = data[strata_cols].astype(str).agg("_".join, axis=1)
@@ -31,21 +36,32 @@ def main() -> None:
     """Generate datalist compatible with MONAI"""
 
     # Variables
-    data_root = Path("/home/renku/work/data")
+    data_root = Path("/home/renku/work/data-local")
     strata_cols = ["Center", "Sex"]
     n_folds = 5
     random_state = 42
     target_dir = data_root / "processed"
     target_dir.mkdir(exist_ok=True, parents=True)
 
+    # Cases to exclude due to corrupted files
+    excluded_cases = ["sub-stroke0043"]
+
     # Make stratified split
-    demo_data = assign_fold(data_root, strata_cols, n_folds, random_state)
+    demo_data = assign_fold(
+        data_root, strata_cols, n_folds, random_state, excluded_cases
+    )
 
     # Build datalist dictionary, using the last fold as testing data
     case_dirs = sorted(data_root.glob("train/derivatives/sub-stroke*"))
     datalist_dict = {"training": [], "testing": []}
     for case_dir in case_dirs:
         case_name = case_dir.name
+
+        # Ignore excluded cases
+        if case_name in excluded_cases:
+            print(f"{case_name} excluded")
+            continue
+
         path_dict = {
             "image": [
                 str(case_dir / f"ses-01/{case_name}_ses-01_space-ncct_cta.nii.gz"),
