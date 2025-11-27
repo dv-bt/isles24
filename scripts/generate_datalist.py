@@ -87,11 +87,8 @@ def main() -> None:
             ),
         }
         fold = demo_data.loc[case_name, "Fold"]
-        if fold == n_folds - 1:
-            datalist_dict["testing"].append(path_dict)
-        else:
-            path_dict["fold"] = int(fold)
-            datalist_dict["training"].append(path_dict)
+        path_dict["fold"] = int(fold)
+        datalist_dict["training"].append(path_dict)
 
     # Save datalist
     with open(target_dir / "datalist-auto3dseg.json", "w") as file:
