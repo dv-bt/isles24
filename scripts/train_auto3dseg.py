@@ -3,23 +3,25 @@ Train MONAI Auto3DSeg
 """
 
 from pathlib import Path
-import yaml
 from monai.apps import auto3dseg
+from isles.utils import generate_datalist, override_swin_params
 
 
 def main() -> None:
     """Execute script"""
 
     # Variables
-    WORK_DIR = Path(
-        "/home/renku/work/auto3dseg-runs/run-002"
-    )
+    data_root = Path("/home/renku/work/data-local/")
+    WORK_DIR = Path("/home/renku/work/auto3dseg-runs/run-003")
     WORK_DIR.mkdir(exist_ok=True, parents=True)
 
-    datalist_file = Path(
-        "/home/renku/work/data-local/processed/datalist-preprocessed.json"
+    datalist_file = WORK_DIR / "datalist.json"
+    generate_datalist(
+        data_root=data_root,
+        target_dir=WORK_DIR,
+        modalities="cta",
+        excluded_cases=["sub-stroke0043"]
     )
-    # All paths are absolute, but dataroot has to be supplied
     dataroot_dir = ""
 
     # Run data analyzer separately with 0 workers to avoid shared memory issues.
@@ -43,7 +45,8 @@ def main() -> None:
         },
         analyze=False,
         algo_gen=False,
-        algos=["swinunetr"]
+        algos=["swinunetr"],
+        ensemble=False,
     )
 
     # Generate algorithm bundles
@@ -54,18 +57,12 @@ def main() -> None:
         data_src_cfg_name=str(WORK_DIR / "input.yaml"),
     )
     bundle_gen.generate(output_folder=WORK_DIR, num_fold=1)
-    
-    # Update ROI size in swin to smaller values to avoid OOM issues.
-    config_path = WORK_DIR / "swinunetr_0/configs/hyper_parameters.yaml"
-    with open(config_path) as f:
-        data = yaml.safe_load(f)
+    override_swin_params(
+        WORK_DIR / "swinunetr_0",
+        {"roi_size": [64, 64, 64], "early_stop_mode": False}
+    )
 
-    data["roi_size"] = [64, 64, 64]
-
-    with open(config_path, "w") as f:
-        yaml.safe_dump(data, f, sort_keys=False, default_flow_style=False)
-
-    max_epochs = 100
+    max_epochs = 300
     train_param = {
         "num_epochs_per_validation": 1,
         "num_images_per_batch": 1,

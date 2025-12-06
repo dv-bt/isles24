@@ -44,18 +44,22 @@ def _build_path_dict(case_dir: Path, modalities: list[str] | str) -> dict:
 
     img_paths = []
     for modality in modalities:
-        if modality == "cta":
-            img_name = f"ses-01/{case_name}_ses-01_space-ncct_cta.nii.gz"
-        else:
-            img_name = (
-                f"ses-01/perfusion-maps/{case_name}_ses-01_space-ncct_{modality}.nii.gz"
+        if modality == "ncct":
+            img_path = (
+                case_dir.parents[1]
+                / f"raw_data/{case_name}/ses-01/{case_name}_ses-01_ncct.nii.gz"
             )
-        img_path = case_dir / img_name
+        else:
+            if modality == "cta":
+                img_name = f"ses-01/{case_name}_ses-01_space-ncct_cta.nii.gz"
+            else:
+                img_name = f"ses-01/perfusion-maps/{case_name}_ses-01_space-ncct_{modality}.nii.gz"
+            img_path = case_dir / img_name
         assert img_path.exists()
         img_paths.append(str(img_path))
 
     path_dict = {
-        "image": img_path,
+        "image": img_paths,
         "label": str(
             case_dir / f"ses-02/{case_name}_ses-02_space-ncct_lesion-msk.nii.gz"
         ),
@@ -70,7 +74,7 @@ def generate_datalist(
     n_folds: int = 5,
     strata_cols: list[str] = ["Center", "Sex"],
     random_state: int = 42,
-    excluded_cases: list[str] | None = None
+    excluded_cases: list[str] | None = None,
 ) -> None:
     """Generate datalist compatible with MONAI"""
 
@@ -107,7 +111,7 @@ def generate_datalist(
 
 def override_swin_params(bundle_dir: Path, params: dict[str, Any]) -> None:
     """Override parameters in swinunetr bundle hyper_parameters.yaml.
-    
+
     Parameters
     ----------
     bundle_dir : Path
