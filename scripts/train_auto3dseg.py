@@ -22,12 +22,8 @@ class Config:
         with open(path, "w") as f:
             yaml.safe_dump(asdict(self), f, sort_keys=False, default_flow_style=False)
 
-
-def main() -> None:
-    """Execute script"""
-
-    config = Config(run_id="run-005", modalities=["ncct"], max_epochs=200)
-
+def train_swin(config: Config) -> None:
+    """Train Swin-UNETR using auto3dseg"""
     data_root = Path("/home/renku/work/data-local/")
     WORK_DIR = Path(f"/home/renku/work/auto3dseg-runs/{config.run_id}")
     WORK_DIR.mkdir(exist_ok=True, parents=True)
@@ -95,6 +91,21 @@ def main() -> None:
     }
     runner.set_training_params(train_param)
     runner.run()
+
+
+def main() -> None:
+    """Execute script"""
+
+    runs_ids = ["run-009", "run-010"]
+    modalities = ["tmax", "mtt"]
+
+    for run_id, modality in zip(runs_ids, modalities):
+        config = Config(
+            run_id=run_id,
+            modalities=modality,
+            max_epochs=200,
+        )
+        train_swin(config)
 
 
 if __name__ == "__main__":
