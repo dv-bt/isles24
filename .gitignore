@@ -15,7 +15,7 @@ __pycache__/
 Thumbs.db
 
 # Data directories
-data/
+data*
 
 # Directory for scratch work
 scratch/
