@@ -90,7 +90,7 @@ def generate_datalist(
 
     # Build datalist dictionary, using the last fold as testing data
     case_dirs = sorted(data_root.glob("train/derivatives/sub-stroke*"))
-    datalist_dict = {"training": []}
+    datalist_dict = {"training": [], "testing": []}
     for case_dir in case_dirs:
         case_name = case_dir.name
 
