@@ -2,4 +2,4 @@
 #
 # Download data to session storage
 mkdir data-local/
-rsync -avz --progress data/ data-local/
+rsync -avz --progress data/train data-local/
