@@ -17,6 +17,7 @@ dependencies:
     - torch
     - torchvision
     - wandb[importers]
+    - lightning
     - monai[all]
     - panoptica
     - -e .
