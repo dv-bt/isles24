@@ -72,6 +72,8 @@ def generate_datalist(
     target_dir: Path,
     modalities: list[str] | str,
     n_folds: int = 5,
+    val_fold: int | None = None,
+    test_fold: int | None = None,
     strata_cols: list[str] = ["Center", "Sex"],
     random_state: int = 42,
     excluded_cases: list[str] | None = None,
@@ -90,7 +92,12 @@ def generate_datalist(
 
     # Build datalist dictionary, using the last fold as testing data
     case_dirs = sorted(data_root.glob("train/derivatives/sub-stroke*"))
-    datalist_dict = {"training": [], "testing": []}
+    datalist_dict = {
+        "modalities": modalities,
+        "training": [],
+        "validation": [],
+        "testing": [],
+    }
     for case_dir in case_dirs:
         case_name = case_dir.name
 
@@ -102,7 +109,12 @@ def generate_datalist(
         path_dict = _build_path_dict(case_dir, modalities=modalities)
         fold = demo_data.loc[case_name, "Fold"]
         path_dict["fold"] = int(fold)
-        datalist_dict["training"].append(path_dict)
+        if val_fold and val_fold == fold:
+            datalist_dict["validation"].append(path_dict)
+        elif test_fold and test_fold == fold:
+            datalist_dict["testing"].append(path_dict)
+        else:
+            datalist_dict["training"].append(path_dict)
 
     # Save datalist
     with open(target_dir / "datalist.json", "w") as file:
@@ -111,6 +123,9 @@ def generate_datalist(
 
 def override_swin_params(bundle_dir: Path, params: dict[str, Any]) -> None:
     """Override parameters in swinunetr bundle hyper_parameters.yaml.
+
+    This is useful when training Swin-UNETR via Auto3DSeg and some of the automatically
+    set hyperparmeters have to be overridden.
 
     Parameters
     ----------
