@@ -107,11 +107,11 @@ def generate_datalist(
             continue
 
         path_dict = _build_path_dict(case_dir, modalities=modalities)
-        fold = demo_data.loc[case_name, "Fold"]
-        path_dict["fold"] = int(fold)
-        if val_fold and val_fold == fold:
+        fold = int(demo_data.loc[case_name, "Fold"])
+        path_dict["fold"] = fold
+        if val_fold is not None and (val_fold == fold):
             datalist_dict["validation"].append(path_dict)
-        elif test_fold and test_fold == fold:
+        elif test_fold is not None and (test_fold == fold):
             datalist_dict["testing"].append(path_dict)
         else:
             datalist_dict["training"].append(path_dict)
