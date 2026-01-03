@@ -53,7 +53,7 @@ def get_train_transforms(
         [
             LoadImaged(keys=["image", "label"]),
             EnsureChannelFirstd(keys=["image", "label"]),
-            Orientationd(keys=["image", "label"], axcodes="RAS"),
+            Orientationd(keys=["image", "label"], axcodes="RAS", labels=None),
             Spacingd(
                 keys=["image", "label"],
                 pixdim=target_spacing,
@@ -113,7 +113,7 @@ def get_val_transforms(
         [
             LoadImaged(keys=["image", "label"]),
             EnsureChannelFirstd(keys=["image", "label"]),
-            Orientationd(keys=["image", "label"], axcodes="RAS"),
+            Orientationd(keys=["image", "label"], axcodes="RAS", labels=None),
             Spacingd(
                 keys=["image", "label"],
                 pixdim=target_spacing,

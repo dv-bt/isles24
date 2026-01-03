@@ -2,13 +2,17 @@
 Utility functions
 """
 
-from typing import Any
+import logging
+from typing import Any, Iterable, Generator
 from pathlib import Path
 import json
 import yaml
+import numpy as np
 import pandas as pd
+import nibabel as nib
 from sklearn.model_selection import StratifiedKFold
 from isles.io import parse_demo_data
+from isles.logging import operation_logger
 
 
 def _assign_fold(
@@ -145,3 +149,106 @@ def override_swin_params(bundle_dir: Path, params: dict[str, Any]) -> None:
 
     with open(config_path, "w") as f:
         yaml.safe_dump(data, f, sort_keys=False, default_flow_style=False)
+
+
+def to_paths(
+    image_entry: str | Iterable[str], dataroot: Path = Path(".")
+) -> Generator[Path, None, None]:
+    """
+    Yield Path objects for each image path in a datalist entry.
+
+    Parameters
+    ----------
+    image_entry : str or Iterable[str]
+        A single image path string or an iterable of path strings.
+    dataroot : Path, optional
+        The root directory to prepend to relative paths.
+        Default is the current working directory Path(".").
+
+    Yields
+    ------
+    Path
+        The resolved Path object. If the input path is absolute, it is yielded
+        as-is; otherwise, it is joined with `dataroot`.
+    """
+    sources = [image_entry] if isinstance(image_entry, str) else image_entry
+
+    for source in sources:
+        path = Path(source)
+        yield path if path.is_absolute() else dataroot / path
+
+
+def _snap_affines_image(
+    channel_list: Iterable[Path],
+    modalities: list[str],
+    rtol: float = 1e-5,
+    atol: float = 1e-6,
+    logger: logging.Logger | None = None,
+) -> None:
+    """Snap affine transforms if they're closer than a relative tolerance."""
+
+    if len(channel_list) <= 1:
+        return
+
+    # Use ncct channel as reference
+    idx_ncct = modalities.index("ncct")
+    ref_img = nib.load(channel_list[idx_ncct])
+    ref_affine = ref_img.affine
+    ref_shape = ref_img.shape
+
+    for idx, img_path in enumerate(channel_list):
+        if idx == idx_ncct:
+            continue
+
+        img = nib.load(img_path)
+        affine = img.affine
+        shape = img.shape
+        changed = False
+
+        assert shape == ref_shape
+
+        if np.allclose(affine, ref_affine, rtol=rtol, atol=atol):
+            data = img.get_fdata(dtype=img.get_data_dtype())
+            header = img.header.copy()
+            header.set_qform(ref_affine)
+            header.set_sform(ref_affine)
+            new_img = nib.Nifti1Image(data, ref_affine, header)
+            nib.save(new_img, img_path)
+            changed = True
+
+        if logger is not None:
+            if changed:
+                logger.info(f"{img_path.name} affine snapped to NCCT")
+            else:
+                logger.warning(
+                    f"{img_path.name} differs by more than rtol={rtol} and atol={atol}"
+                    "from ncct. "
+                    "Affine was not snapped, consider re-registering images."
+                )
+
+
+def snap_affines(
+    data_root: Path,
+    modalities: list[str] | None = None,
+    rtol: float = 1e-5,
+    atol: float = 1e-6,
+    log_file: Path | None = None,
+) -> None:
+    """Snap image affine transforms if they're closer than a given tolerance.
+
+    Images will be snapped to the NCCT affine. This is necessary to have MONAI
+    trasnforms treat each case as a multi-channel image.
+    """
+
+    if modalities is None:
+        modalities = ["cta", "cbv", "cbf", "mtt", "tmax"]
+
+    case_dirs = sorted(data_root.glob("train/derivatives/sub-stroke*"))
+
+    with operation_logger("affine_snap_logger", log_file=log_file) as logger:
+        for case_dir in case_dirs:
+            path_dict = _build_path_dict(case_dir, modalities=modalities)
+            channel_list = to_paths(path_dict["image"])
+            _snap_affines_image(
+                channel_list, modalities, rtol=rtol, atol=atol, logger=logger
+            )
