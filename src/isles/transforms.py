@@ -23,8 +23,8 @@ from monai.transforms import (
 
 
 def get_train_transforms(
-    target_spacing: Sequence[float],
     modalitites: Sequence[str],
+    target_spacing: Sequence[float] | None = None,
     roi_size: Sequence[int] = (64, 64, 64),
     intensity_windows: Mapping[str, Sequence[float]] | None = None,
 ):
@@ -33,10 +33,11 @@ def get_train_transforms(
 
     Parameters
     ----------
-    target_spacing : Sequence[float]
-        Target voxel spacing in mm (x, y, z).
     modalitites: Sequence[str]
         Order of channel modalities in the ["image"] key.
+    target_spacing : Sequence[float] | None
+        Target voxel spacing in mm (x, y, z). If None, keep the original spacing.
+        Default is None.
     roi_size : Sequence[int]
         Size of random crops for training.
     intensity_windows : Mapping[str, Sequence[float]] | None
@@ -49,16 +50,23 @@ def get_train_transforms(
     Compose
         MONAI composed transforms.
     """
-    return Compose(
-        [
-            LoadImaged(keys=["image", "label"]),
-            EnsureChannelFirstd(keys=["image", "label"]),
-            Orientationd(keys=["image", "label"], axcodes="RAS", labels=None),
+    transforms = [
+        LoadImaged(keys=["image", "label"]),
+        EnsureChannelFirstd(keys=["image", "label"]),
+        Orientationd(keys=["image", "label"], axcodes="RAS", labels=None),
+    ]
+
+    if target_spacing is not None:
+        transforms.append(
             Spacingd(
                 keys=["image", "label"],
                 pixdim=target_spacing,
                 mode=("bilinear", "nearest"),
-            ),
+            )
+        )
+
+    transforms.extend(
+        [
             PerChannelScaleIntensityd(
                 keys=["image"],
                 modalities=modalitites,
@@ -85,10 +93,12 @@ def get_train_transforms(
         ]
     )
 
+    return Compose(transforms)
+
 
 def get_val_transforms(
-    target_spacing: Sequence[float],
     modalitites: Sequence[str],
+    target_spacing: Sequence[float] | None = None,
     intensity_windows: Mapping[str, Sequence[float]] | None = None,
 ):
     """
@@ -96,10 +106,11 @@ def get_val_transforms(
 
     Parameters
     ----------
-    target_spacing : tuple of float
-        Target voxel spacing in mm.
     modalitites: Sequence[str]
         Order of channel modalities in the ["image"] key.
+    target_spacing : Sequence[float] | None
+        Target voxel spacing in mm (x, y, z). If None, keep the original spacing.
+        Default is None.
     intensity_windows : Mapping[str, Sequence[float]] | None
         Intensity windows for each channel, e.g. {"cta": (a_min, a_max)}. If None,
         no windowing is performed.
@@ -109,16 +120,23 @@ def get_val_transforms(
     Compose
         MONAI composed transforms.
     """
-    return Compose(
-        [
-            LoadImaged(keys=["image", "label"]),
-            EnsureChannelFirstd(keys=["image", "label"]),
-            Orientationd(keys=["image", "label"], axcodes="RAS", labels=None),
+    transforms = [
+        LoadImaged(keys=["image", "label"]),
+        EnsureChannelFirstd(keys=["image", "label"]),
+        Orientationd(keys=["image", "label"], axcodes="RAS", labels=None),
+    ]
+
+    if target_spacing is not None:
+        transforms.append(
             Spacingd(
                 keys=["image", "label"],
                 pixdim=target_spacing,
                 mode=("bilinear", "nearest"),
-            ),
+            )
+        )
+
+    transforms.extend(
+        [
             PerChannelScaleIntensityd(
                 keys=["image"],
                 modalities=modalitites,
@@ -131,6 +149,8 @@ def get_val_transforms(
             EnsureTyped(keys=["image", "label"]),
         ]
     )
+
+    return Compose(transforms)
 
 
 class PerChannelScaleIntensityd(MapTransform):
