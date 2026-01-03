@@ -51,7 +51,7 @@ def get_train_transforms(
         MONAI composed transforms.
     """
     transforms = [
-        LoadImaged(keys=["image", "label"]),
+        LoadImaged(keys=["image", "label"], image_only=False),
         EnsureChannelFirstd(keys=["image", "label"]),
         Orientationd(keys=["image", "label"], axcodes="RAS", labels=None),
     ]
@@ -89,7 +89,7 @@ def get_train_transforms(
             RandFlipd(keys=["image", "label"], prob=0.5, spatial_axis=1),
             RandFlipd(keys=["image", "label"], prob=0.5, spatial_axis=2),
             RandRotate90d(keys=["image", "label"], prob=0.5, max_k=3),
-            EnsureTyped(keys=["image", "label"]),
+            EnsureTyped(keys=["image", "label"], track_meta=True),
         ]
     )
 
@@ -121,7 +121,7 @@ def get_val_transforms(
         MONAI composed transforms.
     """
     transforms = [
-        LoadImaged(keys=["image", "label"]),
+        LoadImaged(keys=["image", "label"], image_only=False),
         EnsureChannelFirstd(keys=["image", "label"]),
         Orientationd(keys=["image", "label"], axcodes="RAS", labels=None),
     ]
@@ -146,7 +146,7 @@ def get_val_transforms(
                 clip=True,
             ),
             CropForegroundd(keys=["image", "label"], source_key="image"),
-            EnsureTyped(keys=["image", "label"]),
+            EnsureTyped(keys=["image", "label"], track_meta=True),
         ]
     )
 
