@@ -180,59 +180,43 @@ def to_paths(
 
 def _snap_affines_image(
     channel_list: Iterable[Path],
-    modalities: list[str],
-    rtol: float = 1e-5,
-    atol: float = 1e-6,
+    reference_idx: int,
+    atol: float = 1e-4,
     logger: logging.Logger | None = None,
+    dry_run: bool = False,
 ) -> None:
-    """Snap affine transforms if they're closer than a relative tolerance."""
-
-    if len(channel_list) <= 1:
-        return
+    """Snap affine transforms if they're closer than a given tolerance."""
 
     # Use ncct channel as reference
-    idx_ncct = modalities.index("ncct")
-    ref_img = nib.load(channel_list[idx_ncct])
+    ref_img = nib.load(channel_list[reference_idx])
     ref_affine = ref_img.affine
-    ref_shape = ref_img.shape
 
     for idx, img_path in enumerate(channel_list):
-        if idx == idx_ncct:
+        if idx == reference_idx:
             continue
 
         img = nib.load(img_path)
-        affine = img.affine
-        shape = img.shape
-        changed = False
 
-        assert shape == ref_shape
-
-        if np.allclose(affine, ref_affine, rtol=rtol, atol=atol):
-            data = img.get_fdata(dtype=img.get_data_dtype())
-            header = img.header.copy()
-            header.set_qform(ref_affine)
-            header.set_sform(ref_affine)
-            new_img = nib.Nifti1Image(data, ref_affine, header)
-            nib.save(new_img, img_path)
-            changed = True
-
-        if logger is not None:
-            if changed:
-                logger.info(f"{img_path.name} affine snapped to NCCT")
-            else:
-                logger.warning(
-                    f"{img_path.name} differs by more than rtol={rtol} and atol={atol}"
-                    "from ncct. "
-                    "Affine was not snapped, consider re-registering images."
-                )
+        if not np.allclose(img.affine, ref_affine, atol=atol):
+            logger.warning(
+                f"{img_path.name} differs by more than and atol={atol} from reference."
+                "Affine was not snapped, consider re-registering images."
+            )
+        else:
+            if not dry_run:
+                img.set_qform(ref_affine)
+                img.set_sform(ref_affine)
+                nib.save(img, img_path)
+            logger.info(f"{img_path.name} affine snapped to NCCT")
 
 
 def snap_affines(
     data_root: Path,
     modalities: list[str] | None = None,
-    rtol: float = 1e-5,
-    atol: float = 1e-6,
+    reference_mod: str = "ncct",
+    atol: float = 1e-4,
     log_file: Path | None = None,
+    dry_run: bool = False,
 ) -> None:
     """Snap image affine transforms if they're closer than a given tolerance.
 
@@ -241,14 +225,22 @@ def snap_affines(
     """
 
     if modalities is None:
-        modalities = ["cta", "cbv", "cbf", "mtt", "tmax"]
+        modalities = ["cta", "cbv", "cbf", "mtt", "tmax", "ncct"]
 
+    reference_idx = modalities.index(reference_mod)
     case_dirs = sorted(data_root.glob("train/derivatives/sub-stroke*"))
 
     with operation_logger("affine_snap_logger", log_file=log_file) as logger:
+        logger.info(
+            f"Snapping affines with atol={atol} to reference {reference_mod}"
+        )
         for case_dir in case_dirs:
             path_dict = _build_path_dict(case_dir, modalities=modalities)
-            channel_list = to_paths(path_dict["image"])
+            channel_list = list(to_paths(path_dict["image"]))
             _snap_affines_image(
-                channel_list, modalities, rtol=rtol, atol=atol, logger=logger
+                channel_list,
+                reference_idx=reference_idx,
+                atol=atol,
+                logger=logger,
+                dry_run=dry_run,
             )
