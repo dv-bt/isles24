@@ -2,7 +2,7 @@
 Code for image processing and transforms
 """
 
-from typing import Sequence, Mapping
+from collections.abc import Sequence, Mapping
 import numpy as np
 from numpy.typing import DTypeLike
 import torch

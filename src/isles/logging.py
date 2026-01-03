@@ -3,7 +3,7 @@ Logging utilities
 """
 
 import logging
-from typing import Generator
+from collections.abc import Iterator
 import sys
 from contextlib import contextmanager
 from pathlib import Path
@@ -12,7 +12,7 @@ from pathlib import Path
 @contextmanager
 def operation_logger(
     name: str, log_file: str | Path | None = None, level: int = logging.INFO
-) -> Generator[logging.Logger, None, None]:
+) -> Iterator[logging.Logger]:
     """
     Context manager to setup a logger with console output and optional file output.
 

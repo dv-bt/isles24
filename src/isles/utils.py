@@ -3,7 +3,8 @@ Utility functions
 """
 
 import logging
-from typing import Any, Iterable, Generator
+from typing import Any
+from collections.abc import Iterable, Iterator
 from pathlib import Path
 import json
 import yaml
@@ -153,7 +154,7 @@ def override_swin_params(bundle_dir: Path, params: dict[str, Any]) -> None:
 
 def to_paths(
     image_entry: str | Iterable[str], dataroot: Path = Path(".")
-) -> Generator[Path, None, None]:
+) -> Iterator[Path]:
     """
     Yield Path objects for each image path in a datalist entry.
 
