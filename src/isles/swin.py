@@ -315,9 +315,17 @@ def train_swin(
     checkpoint_dir = run_dir / "checkpoints"
     checkpoint_dir.mkdir(parents=True, exist_ok=True)
 
+    # Dump config to JSON log to WandB
+    config_path = run_dir / "config.json"
+    config.to_json(config_path)
+    artifact = wandb.Artifact("config", type="config")
+    artifact.add_file(config_path, name="config.json")
+    wandb.log_artifact(artifact)
+
     device = torch.device(config.device)
     model = model.to(device)
 
+    # === Define optimizer, scheduler, losses, etc. ===
     optimizer = torch.optim.AdamW(
         model.parameters(),
         lr=config.learning_rate,
