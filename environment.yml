@@ -4,16 +4,16 @@ channels:
   - nodefaults
 dependencies:
   - python=3.12
-  - scikit-learn
-  - pandas
-  - openpyxl
-  - seaborn
-  - matplotlib
   - jupyterlab
-  - nibabel
   - hatchling
   - pip
   - pip:
+    - pandas
+    - scikit-learn
+    - openpyxl
+    - matplotlib
+    - seaborn
+    - nibabel
     - torch
     - torchvision
     - wandb[importers]
