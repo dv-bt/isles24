@@ -82,8 +82,8 @@ def generate_datalist(
     strata_cols: list[str] = ["Center", "Sex"],
     random_state: int = 42,
     excluded_cases: list[str] | None = None,
-) -> None:
-    """Generate datalist compatible with MONAI"""
+) -> dict:
+    """Generate datalist compatible with MONAI and return it as a dictionary"""
 
     target_dir.mkdir(exist_ok=True, parents=True)
 
@@ -124,6 +124,7 @@ def generate_datalist(
     # Save datalist
     with open(target_dir / "datalist.json", "w") as file:
         json.dump(datalist_dict, file, indent=4)
+    return datalist_dict
 
 
 def override_swin_params(bundle_dir: Path, params: dict[str, Any]) -> None:
@@ -232,9 +233,7 @@ def snap_affines(
     case_dirs = sorted(data_root.glob("train/derivatives/sub-stroke*"))
 
     with operation_logger("affine_snap_logger", log_file=log_file) as logger:
-        logger.info(
-            f"Snapping affines with atol={atol} to reference {reference_mod}"
-        )
+        logger.info(f"Snapping affines with atol={atol} to reference {reference_mod}")
         for case_dir in case_dirs:
             path_dict = _build_path_dict(case_dir, modalities=modalities)
             channel_list = list(to_paths(path_dict["image"]))

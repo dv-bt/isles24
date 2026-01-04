@@ -5,6 +5,8 @@ I/O functions
 from pathlib import Path
 from tqdm import tqdm
 import pandas as pd
+from monai.data import CacheDataset, DataLoader
+from monai.transforms import Compose
 
 
 def parse_demo_data(data_root: Path | str) -> pd.DataFrame:
@@ -62,3 +64,31 @@ def parse_demo_data(data_root: Path | str) -> pd.DataFrame:
         demo_data[col] = pd.to_timedelta(demo_data[col]).dt.total_seconds() / 3600
 
     return demo_data
+
+
+def get_dataloader(
+    datalist: dict,
+    key: str,
+    transforms: Compose,
+    batch_size: int,
+    shuffle: bool = True,
+    cache_rate: float = 1.0,
+    num_workers: int = 1,
+) -> DataLoader:
+    """Get dataloader using CacheDataset"""
+
+    dataset = CacheDataset(
+        data=datalist.get(key),
+        transform=transforms,
+        cache_rate=cache_rate,
+        num_workers=num_workers,
+    )
+
+    dataloader = DataLoader(
+        dataset=dataset,
+        batch_size=batch_size,
+        shuffle=shuffle,
+        num_workers=num_workers,
+    )
+
+    return dataloader

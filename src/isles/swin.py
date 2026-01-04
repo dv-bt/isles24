@@ -48,6 +48,8 @@ class SwinTrainConfig:
         Kernel size for multi-encoder fusion convolution.
     roi_size : Sequence of int
         Patch size for training and sliding window inference.
+    batch_size: int
+        Batch size for training.
     inferer_batch_size : int
         Batch size for sliding window inference.
     inferer_overlap : float
@@ -80,6 +82,7 @@ class SwinTrainConfig:
 
     # Training / inference patches
     roi_size: Sequence[int] = (64, 64, 64)
+    batch_size: int = 1
     inferer_batch_size: int = 2
     inferer_overlap: float = 0.5
     inferer_mode: str = "gaussian"
