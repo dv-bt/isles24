@@ -17,7 +17,7 @@ from isles.utils import generate_datalist
 def main():
     run_id = "run-011"
     config = SwinTrainConfig(
-        max_epochs=5,
+        max_epochs=100,
         modalities=["cta", "cbf"],
         target_spacing=(1.0, 1.0, 1.0),
         roi_size=(64, 64, 64),
@@ -48,7 +48,7 @@ def main():
         },
         save_code=True,
     )
-    artifact = wandb.Artifact("datalist", type="dataset")
+    artifact = wandb.Artifact('datalist', type='datalist')
     artifact.add_file(run_dir / "datalist.json", name="datalist.json")
     wandb.log_artifact(artifact)
 
