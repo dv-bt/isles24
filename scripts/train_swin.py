@@ -15,11 +15,11 @@ from isles.utils import generate_datalist
 
 
 def main():
-    run_id = "run-010"
+    run_id = "run-011"
     config = SwinTrainConfig(
         max_epochs=5,
         modalities=["cta", "cbf"],
-        target_spacing=(2.0, 2.0, 2.0),
+        target_spacing=(1.0, 1.0, 1.0),
         roi_size=(64, 64, 64),
         learning_rate=4e-4,
     )
@@ -38,6 +38,7 @@ def main():
     wandb.init(
         project="ISLES",
         name=run_id,
+        dir=run_dir,
         config={
             **asdict(config),
             "model": "MultiEncoderSwinUNETR",
