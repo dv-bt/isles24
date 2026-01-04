@@ -47,7 +47,7 @@ def main():
         },
         save_code=True,
     )
-    artifact = wandb.Artifact("datalist", type="datalist")
+    artifact = wandb.Artifact("datalist", type="dataset")
     artifact.add_file(run_dir / "datalist.json", name="datalist.json")
     wandb.log_artifact(artifact)
 
@@ -62,6 +62,7 @@ def main():
     train_swin(
         model=model,
         config=config,
+        run_dir=run_dir,
         train_loader=train_loader,
         val_loader=val_loader,
         orig_loader=orig_loader,

@@ -321,12 +321,10 @@ def train_swin(
     checkpoint_dir = run_dir / "checkpoints"
     checkpoint_dir.mkdir(parents=True, exist_ok=True)
 
-    # Dump config to JSON log to WandB
+    # Dump config to JSON and log to WandB
     config_path = run_dir / "config.json"
     config.to_json(config_path)
-    artifact = wandb.Artifact("config", type="config")
-    artifact.add_file(config_path, name="config.json")
-    wandb.log_artifact(artifact)
+    wandb.save(config_path, base_path=run_dir)
 
     device = torch.device(config.device)
     model = model.to(device)
@@ -455,12 +453,7 @@ def train_swin(
                 {"train/loss": epoch_loss, "train/lr": current_lr, "epoch": epoch + 1}
             )
 
-    # Log model artifacts
-    artifact = wandb.Artifact("model", type="model")
-    artifact.add_file(
-        checkpoint_dir / "best_model.pt", name="checkpoints/best_model.pt"
-    )
-    wandb.log_artifact(artifact)
+    wandb.save(checkpoint_dir / "best_model.pt", base_path=run_dir)
 
     # === Final Evaluation ===
     if orig_loader is not None:
@@ -483,17 +476,12 @@ def train_swin(
 
         wandb.log({"final/dice_mean": final_results["dice_mean"]})
         wandb.log({"final/best_epoch": best_epoch})
-
-        artifact = wandb.Artifact("dice_scores", type="evaluation")
-        artifact.add_file(final_results["csv_path"], name="evaluation/dice_scores.csv")
-        wandb.log_artifact(artifact)
+        wandb.save(final_results["csv_path"], base_path=run_dir)
 
         if save_predictions:
-            artifact = wandb.Artifact("predictions", type="predictions")
-            artifact.add_dir(
-                final_results["predictions_dir"], name="evaluation/predictions"
+            wandb.save(
+                f"{final_results['predictions_dir']}/*.nii.gz", base_path=run_dir
             )
-            wandb.log_artifact(artifact)
 
 
 @torch.no_grad()
