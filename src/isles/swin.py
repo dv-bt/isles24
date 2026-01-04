@@ -25,6 +25,9 @@ from monai.losses import DiceCELoss
 from monai.metrics import DiceMetric
 from monai.data import DataLoader
 
+from isles.io import get_dataloader
+from isles.transforms import get_train_transforms, get_val_transforms
+
 
 @dataclass
 class SwinTrainConfig:
@@ -572,3 +575,51 @@ def run_final_evaluation(
         output["predictions_dir"] = str(predictions_dir)
 
     return output
+
+
+def get_swin_dataloaders(datalist: dict, config: SwinTrainConfig) -> tuple[DataLoader]:
+    """Get dataloader for training multi-encoder Swin-UNETR.
+
+    Parameters
+    ----------
+    datalist : dict
+        Datalist as dictionary. It should have the keys "training" and "validation".
+    config : SwinTrainConfig
+        Configuration for training multi-encoder Swin-UNETR
+
+    Returns
+    -------
+    (train_loader, val_loader, orig_loader): tuple[DataLoaders]
+        Training, validation, and validation at original spacing dataloaders.
+    """
+    train_loader = get_dataloader(
+        datalist=datalist,
+        key="training",
+        transforms=get_train_transforms(
+            modalitites=config.modalities,
+            target_spacing=config.target_spacing,
+            roi_size=config.roi_size,
+        ),
+        batch_size=config.batch_size,
+    )
+
+    val_loader = get_dataloader(
+        datalist=datalist,
+        key="validation",
+        transforms=get_val_transforms(
+            modalitites=config.modalities,
+            target_spacing=config.target_spacing,
+        ),
+        batch_size=config.batch_size,
+    )
+
+    orig_loader = get_dataloader(
+        datalist=datalist,
+        key="validation",
+        transforms=get_val_transforms(
+            modalitites=config.modalities,
+            target_spacing=None,
+        ),
+        batch_size=config.batch_size,
+    )
+    return train_loader, val_loader, orig_loader

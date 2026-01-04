@@ -5,10 +5,13 @@ Train multi encoder Swin-UNETR
 from pathlib import Path
 from dataclasses import asdict
 import wandb
-from isles.swin import SwinTrainConfig, MultiEncoderSwinUNETR, train_swin
+from isles.swin import (
+    SwinTrainConfig,
+    MultiEncoderSwinUNETR,
+    train_swin,
+    get_swin_dataloaders,
+)
 from isles.utils import generate_datalist
-from isles.io import get_dataloader
-from isles.transforms import get_train_transforms, get_val_transforms
 
 
 def main():
@@ -18,6 +21,7 @@ def main():
         modalities=["cta", "cbf"],
         target_spacing=(2.0, 2.0, 2.0),
         roi_size=(64, 64, 64),
+        learning_rate=4e-4,
     )
 
     data_root = Path("/home/renku/work/data-local")
@@ -37,43 +41,17 @@ def main():
         config={
             **asdict(config),
             "model": "MultiEncoderSwinUNETR",
+            "loss": "DiceCELoss",
+            "optimizer": "AdamW",
+            "scheduler": "CosineAnnealingLR",
         },
+        save_code=True,
     )
     artifact = wandb.Artifact("datalist", type="datalist")
     artifact.add_file(run_dir / "datalist.json", name="datalist.json")
     wandb.log_artifact(artifact)
 
-    # Build data loaders
-    train_loader = get_dataloader(
-        datalist=datalist,
-        key="training",
-        transforms=get_train_transforms(
-            modalitites=config.modalities,
-            target_spacing=config.target_spacing,
-            roi_size=config.roi_size,
-        ),
-        batch_size=config.batch_size,
-    )
-
-    val_loader = get_dataloader(
-        datalist=datalist,
-        key="validation",
-        transforms=get_val_transforms(
-            modalitites=config.modalities,
-            target_spacing=config.target_spacing,
-        ),
-        batch_size=config.batch_size,
-    )
-
-    orig_loader = get_dataloader(
-        datalist=datalist,
-        key="validation",
-        transforms=get_val_transforms(
-            modalitites=config.modalities,
-            target_spacing=None,
-        ),
-        batch_size=config.batch_size,
-    )
+    train_loader, val_loader, orig_loader = get_swin_dataloaders(datalist, config)
 
     model = MultiEncoderSwinUNETR(
         modalities=config.modalities,
