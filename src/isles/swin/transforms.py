@@ -25,6 +25,9 @@ from monai.transforms import (
     AsDiscrete,
     CastToTyped,
     SpatialPadd,
+    CopyItemsd,
+    DeleteItemsd,
+    Lambdad,
 )
 from monai.utils import convert_to_dst_type
 
@@ -45,10 +48,24 @@ def get_train_transforms(config: SwinTrainConfig):
     Compose
         MONAI composed transforms.
     """
+    
+    # Use CTA to guide crop, should improve this logic later
+    cta_idx = config.modalities.index("cta")
+    cta_background = -500
+    
     transforms = [
         LoadImaged(keys=["image", "label"], image_only=False),
         EnsureChannelFirstd(keys=["image", "label"]),
         Orientationd(keys=["image", "label"], axcodes="RAS", labels=None),
+        CopyItemsd(keys=["image"], times=1, names=["temp_guide"]),
+        Lambdad(keys=["temp_guide"], func=lambda x: x[cta_idx:cta_idx + 1, ...]),
+        CropForegroundd(
+            keys=["image", "label"],
+            source_key="temp_guide",
+            select_fn=lambda x: x > cta_background,
+            margin=10,
+        ),
+        DeleteItemsd(keys=["temp_guide"]),
         PerChannelScaleIntensityd(
             keys=["image"],
             modalities=config.modalities,
@@ -56,11 +73,6 @@ def get_train_transforms(config: SwinTrainConfig):
             b_min=0.0,
             b_max=1.0,
             clip=True,
-        ),
-        CropForegroundd(
-            keys=["image", "label"],
-            source_key="image",
-            allow_smaller=True,
         ),
     ]
 
@@ -113,22 +125,31 @@ def get_val_transforms(config: SwinTrainConfig):
     Compose
         MONAI composed transforms.
     """
+
+    # Use CTA to guide crop, should improve this logic later
+    cta_idx = config.modalities.index("cta")
+    cta_background = -500
+
     transforms = [
         LoadImaged(keys=["image", "label"], image_only=False),
         EnsureChannelFirstd(keys=["image", "label"]),
         Orientationd(keys=["image", "label"], axcodes="RAS", labels=None),
+        CopyItemsd(keys=["image"], times=1, names=["temp_guide"]),
+        Lambdad(keys=["temp_guide"], func=lambda x: x[cta_idx:cta_idx + 1, ...]),
+        CropForegroundd(
+            keys=["image", "label"],
+            source_key="temp_guide",
+            select_fn=lambda x: x > cta_background,
+            margin=10,
+        ),
+        DeleteItemsd(keys=["temp_guide"]),
         PerChannelScaleIntensityd(
             keys=["image"],
-            modalities=config.modalitites,
+            modalities=config.modalities,
             windows=config.intensity_windows,
             b_min=0.0,
             b_max=1.0,
             clip=True,
-        ),
-        CropForegroundd(
-            keys=["image", "label"],
-            source_key="image",
-            allow_smaller=True,
         ),
     ]
 
