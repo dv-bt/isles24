@@ -13,37 +13,32 @@ from monai.transforms import (
     Orientationd,
     Spacingd,
     CropForegroundd,
-    RandCropByPosNegLabeld,
     RandFlipd,
     RandRotate90d,
     EnsureTyped,
     MapTransform,
     ScaleIntensityRange,
+    RandScaleIntensityd,
+    RandShiftIntensityd,
+    RandCropByLabelClassesd,
+    EnsureType,
+    AsDiscrete,
+    CastToTyped,
+    SpatialPadd,
 )
+from monai.utils import convert_to_dst_type
+
+from isles.swin.config import SwinTrainConfig
 
 
-def get_train_transforms(
-    modalitites: Sequence[str],
-    target_spacing: Sequence[float] | None = None,
-    roi_size: Sequence[int] = (64, 64, 64),
-    intensity_windows: Mapping[str, Sequence[float]] | None = None,
-):
+def get_train_transforms(config: SwinTrainConfig):
     """
     Build training transforms.
 
     Parameters
     ----------
-    modalitites: Sequence[str]
-        Order of channel modalities in the ["image"] key.
-    target_spacing : Sequence[float] | None
-        Target voxel spacing in mm (x, y, z). If None, keep the original spacing.
-        Default is None.
-    roi_size : Sequence[int]
-        Size of random crops for training.
-    intensity_windows : Mapping[str, Sequence[float]] | None
-        Intensity windows for each channel, e.g. {"cta": (a_min, a_max)}. If None,
-        no windowing is performed.
-
+    config : SwinTrainConfig
+        Configuration dataclass for training multi-encoder Swin-UNETR.
 
     Returns
     -------
@@ -54,66 +49,64 @@ def get_train_transforms(
         LoadImaged(keys=["image", "label"], image_only=False),
         EnsureChannelFirstd(keys=["image", "label"]),
         Orientationd(keys=["image", "label"], axcodes="RAS", labels=None),
+        PerChannelScaleIntensityd(
+            keys=["image"],
+            modalities=config.modalities,
+            windows=config.intensity_windows,
+            b_min=0.0,
+            b_max=1.0,
+            clip=True,
+        ),
+        CropForegroundd(
+            keys=["image", "label"],
+            source_key="image",
+            allow_smaller=True,
+        ),
     ]
 
-    if target_spacing is not None:
+    if config.target_spacing is not None:
         transforms.append(
             Spacingd(
                 keys=["image", "label"],
-                pixdim=target_spacing,
+                pixdim=config.target_spacing,
                 mode=("bilinear", "nearest"),
             )
         )
 
     transforms.extend(
         [
-            PerChannelScaleIntensityd(
-                keys=["image"],
-                modalities=modalitites,
-                windows=intensity_windows,
-                b_min=0.0,
-                b_max=1.0,
-                clip=True,
-            ),
-            CropForegroundd(keys=["image", "label"], source_key="image"),
-            RandCropByPosNegLabeld(
+            CastToTyped(keys=["image", "label"], dtype=[torch.float32, torch.uint8]),
+            EnsureTyped(keys=["image", "label"], track_meta=True),
+            SpatialPadd(keys=["image", "label"], spatial_size=config.roi_size),
+            RandCropByLabelClassesd(
                 keys=["image", "label"],
                 label_key="label",
-                spatial_size=roi_size,
-                pos=1,
-                neg=1,
-                num_samples=4,
+                num_classes=config.num_classes,
+                ratios=config.crop_ratios,
+                num_samples=config.num_crops_per_image,
+                spatial_size=config.roi_size,
+                warn=False,
             ),
-            # Data augmentation
-            RandFlipd(keys=["image", "label"], prob=0.5, spatial_axis=0),
-            RandFlipd(keys=["image", "label"], prob=0.5, spatial_axis=1),
-            RandFlipd(keys=["image", "label"], prob=0.5, spatial_axis=2),
-            RandRotate90d(keys=["image", "label"], prob=0.5, max_k=3),
-            EnsureTyped(keys=["image", "label"], track_meta=True),
+            RandFlipd(keys=["image", "label"], prob=0.2, spatial_axis=0),
+            RandFlipd(keys=["image", "label"], prob=0.2, spatial_axis=1),
+            RandFlipd(keys=["image", "label"], prob=0.2, spatial_axis=2),
+            RandRotate90d(keys=["image", "label"], prob=0.2, max_k=3),
+            RandScaleIntensityd(keys=["image"], factors=0.1, prob=0.1),
+            RandShiftIntensityd(keys=["image"], offsets=0.1, prob=0.1),
         ]
     )
 
     return Compose(transforms)
 
 
-def get_val_transforms(
-    modalitites: Sequence[str],
-    target_spacing: Sequence[float] | None = None,
-    intensity_windows: Mapping[str, Sequence[float]] | None = None,
-):
+def get_val_transforms(config: SwinTrainConfig):
     """
-    Build validation transforms (no augmentation, no random cropping).
+    Build validation transforms (no augmentation).
 
     Parameters
     ----------
-    modalitites: Sequence[str]
-        Order of channel modalities in the ["image"] key.
-    target_spacing : Sequence[float] | None
-        Target voxel spacing in mm (x, y, z). If None, keep the original spacing.
-        Default is None.
-    intensity_windows : Mapping[str, Sequence[float]] | None
-        Intensity windows for each channel, e.g. {"cta": (a_min, a_max)}. If None,
-        no windowing is performed.
+    config : SwinTrainConfig
+        Configuration dataclass for training multi-encoder Swin-UNETR.
 
     Returns
     -------
@@ -124,28 +117,33 @@ def get_val_transforms(
         LoadImaged(keys=["image", "label"], image_only=False),
         EnsureChannelFirstd(keys=["image", "label"]),
         Orientationd(keys=["image", "label"], axcodes="RAS", labels=None),
+        PerChannelScaleIntensityd(
+            keys=["image"],
+            modalities=config.modalitites,
+            windows=config.intensity_windows,
+            b_min=0.0,
+            b_max=1.0,
+            clip=True,
+        ),
+        CropForegroundd(
+            keys=["image", "label"],
+            source_key="image",
+            allow_smaller=True,
+        ),
     ]
 
-    if target_spacing is not None:
+    if config.target_spacing is not None:
         transforms.append(
             Spacingd(
                 keys=["image", "label"],
-                pixdim=target_spacing,
+                pixdim=config.target_spacing,
                 mode=("bilinear", "nearest"),
             )
         )
 
     transforms.extend(
         [
-            PerChannelScaleIntensityd(
-                keys=["image"],
-                modalities=modalitites,
-                windows=intensity_windows,
-                b_min=0.0,
-                b_max=1.0,
-                clip=True,
-            ),
-            CropForegroundd(keys=["image", "label"], source_key="image"),
+            CastToTyped(keys=["image", "label"], dtype=[torch.float32, torch.uint8]),
             EnsureTyped(keys=["image", "label"], track_meta=True),
         ]
     )
@@ -229,6 +227,20 @@ class PerChannelScaleIntensityd(MapTransform):
 
                 scaled_channels.append(scaling(channel))
 
-            d[key] = torch.cat(scaled_channels, dim=0)
+            ret = torch.cat(scaled_channels, dim=0)
+            ret = convert_to_dst_type(ret, image, dtype=self.dtype)[0]
+            d[key] = ret
 
         return d
+
+
+def get_pred_transforms() -> Compose:
+    """
+    Convert model output logits to discrete predictions.
+    """
+    return Compose(
+        [
+            EnsureType(),
+            AsDiscrete(argmax=True, to_onehot=None),
+        ]
+    )
