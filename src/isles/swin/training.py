@@ -310,5 +310,5 @@ def get_dice_metric(config: SwinTrainConfig) -> DiceMetric:
     return DiceMetric(
         include_background=False,
         reduction="mean",
-        num_classes=config.out_channels,
+        num_classes=config.num_classes,
     )
