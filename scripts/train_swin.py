@@ -5,26 +5,26 @@ Train multi encoder Swin-UNETR
 from pathlib import Path
 from dataclasses import asdict
 import wandb
-from isles.swin import (
-    SwinTrainConfig,
-    MultiEncoderSwinUNETR,
-    train_swin,
-    get_swin_dataloaders,
-)
+from isles.swin.config import SwinTrainConfig
+from isles.swin.model import MultiEncoderSwinUNETR
+from isles.swin.training import train_swin, get_swin_dataloaders
 from isles.utils import generate_datalist
 
 
 def main():
-    run_id = "run-011"
+    run_id = "run-012"
     config = SwinTrainConfig(
         max_epochs=100,
         modalities=["cta", "cbf"],
         target_spacing=(1.0, 1.0, 1.0),
         roi_size=(64, 64, 64),
         learning_rate=4e-4,
+        num_crops_per_image=4,
+        inferer_batch_size=4,
     )
 
     data_root = Path("/home/renku/work/data-local")
+    pretrained_path = data_root / "swin_unetr.base_5000ep_f48_lr2e-4_pretrained.pt"
     run_dir = data_root / f"runs/{run_id}"
     run_dir.mkdir(parents=True, exist_ok=True)
 
@@ -44,21 +44,18 @@ def main():
             "model": "MultiEncoderSwinUNETR",
             "loss": "DiceCELoss",
             "optimizer": "AdamW",
-            "scheduler": "CosineAnnealingLR",
+            "scheduler": "WarmupCosineSchedule",
         },
         save_code=True,
     )
-    artifact = wandb.Artifact('datalist', type='datalist')
+    artifact = wandb.Artifact("datalist", type="datalist")
     artifact.add_file(run_dir / "datalist.json", name="datalist.json")
     wandb.log_artifact(artifact)
 
-    train_loader, val_loader, orig_loader = get_swin_dataloaders(datalist, config)
+    train_loader, val_loader = get_swin_dataloaders(datalist, config)
 
-    model = MultiEncoderSwinUNETR(
-        modalities=config.modalities,
-        feature_size=config.feature_size,
-        fusion_kernel_size=config.fusion_kernel_size,
-    )
+    model = MultiEncoderSwinUNETR.from_config(config)
+    model.load_pretrained_encoders(pretrained_path)
 
     train_swin(
         model=model,
@@ -66,8 +63,6 @@ def main():
         run_dir=run_dir,
         train_loader=train_loader,
         val_loader=val_loader,
-        orig_loader=orig_loader,
-        save_predictions=True,
     )
 
 

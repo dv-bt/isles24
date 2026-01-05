@@ -75,6 +75,7 @@ class SwinTrainConfig:
     max_epochs: int = 200
     learning_rate: float = 1e-4
     weight_decay: float = 1e-5
+    warmup_ratio: float = 0.05
     amp: bool = True
 
     # Validation

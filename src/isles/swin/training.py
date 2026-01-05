@@ -14,6 +14,7 @@ from monai.inferers import SlidingWindowInferer
 from monai.losses import DiceCELoss
 from monai.metrics import DiceMetric
 from monai.data import DataLoader
+from monai.optimizers import WarmupCosineSchedule
 
 from isles.io import get_dataloader
 from isles.swin.config import SwinTrainConfig
@@ -165,9 +166,11 @@ def train_swin(
         lr=config.learning_rate,
         weight_decay=config.weight_decay,
     )
-    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
-        optimizer,
-        T_max=config.max_epochs,
+    scheduler = WarmupCosineSchedule(
+        optimizer=optimizer,
+        t_total=config.max_epochs,
+        warmup_steps=int(config.max_epochs * config.warmup_ratio),
+        warmup_multiplier=0.1,
     )
     scaler = torch.amp.GradScaler(enabled=config.amp)
     inferer = SlidingWindowInferer(
