@@ -269,21 +269,14 @@ def get_swin_dataloaders(datalist: dict, config: SwinTrainConfig) -> tuple[DataL
     train_loader = get_dataloader(
         datalist=datalist,
         key="training",
-        transforms=get_train_transforms(
-            modalitites=config.modalities,
-            target_spacing=config.target_spacing,
-            roi_size=config.roi_size,
-        ),
+        transforms=get_train_transforms(config),
         batch_size=config.batch_size,
     )
 
     val_loader = get_dataloader(
         datalist=datalist,
         key="validation",
-        transforms=get_val_transforms(
-            modalitites=config.modalities,
-            target_spacing=config.target_spacing,
-        ),
+        transforms=get_val_transforms(config),
         batch_size=config.batch_size,
     )
 
