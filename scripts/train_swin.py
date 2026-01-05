@@ -24,7 +24,7 @@ def main():
     )
 
     data_root = Path("/home/renku/work/data-local")
-    pretrained_path = data_root / "swin_unetr.base_5000ep_f48_lr2e-4_pretrained.pt"
+    pretrained_path = data_root / "pretrained/swin_unetr.base_5000ep_f48_lr2e-4_pretrained.pt"
     run_dir = data_root / f"runs/{run_id}"
     run_dir.mkdir(parents=True, exist_ok=True)
 
