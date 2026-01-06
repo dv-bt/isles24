@@ -12,9 +12,9 @@ from isles.utils import generate_datalist
 
 
 def main():
-    run_id = "run-014"
+    run_id = "run-015"
     config = SwinTrainConfig(
-        max_epochs=100,
+        max_epochs=500,
         modalities=["cta", "cbf"],
         target_spacing=(1.0, 1.0, 1.0),
         roi_size=(64, 64, 64),
