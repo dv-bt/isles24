@@ -24,7 +24,7 @@ def main():
             "cta": [0, 90],
             "cbf": [0, 35]
         },
-        batch_size=2,
+        batch_size=1,
     )
 
     data_root = Path("/home/renku/work/data-local")
