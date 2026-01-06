@@ -48,17 +48,17 @@ def get_train_transforms(config: SwinTrainConfig):
     Compose
         MONAI composed transforms.
     """
-    
+
     # Use CTA to guide crop, should improve this logic later
     cta_idx = config.modalities.index("cta")
     cta_background = -500
-    
+
     transforms = [
         LoadImaged(keys=["image", "label"], image_only=False),
         EnsureChannelFirstd(keys=["image", "label"]),
         Orientationd(keys=["image", "label"], axcodes="RAS", labels=None),
         CopyItemsd(keys=["image"], times=1, names=["temp_guide"]),
-        Lambdad(keys=["temp_guide"], func=lambda x: x[cta_idx:cta_idx + 1, ...]),
+        Lambdad(keys=["temp_guide"], func=lambda x: x[cta_idx : cta_idx + 1, ...]),
         CropForegroundd(
             keys=["image", "label"],
             source_key="temp_guide",
@@ -135,7 +135,7 @@ def get_val_transforms(config: SwinTrainConfig):
         EnsureChannelFirstd(keys=["image", "label"]),
         Orientationd(keys=["image", "label"], axcodes="RAS", labels=None),
         CopyItemsd(keys=["image"], times=1, names=["temp_guide"]),
-        Lambdad(keys=["temp_guide"], func=lambda x: x[cta_idx:cta_idx + 1, ...]),
+        Lambdad(keys=["temp_guide"], func=lambda x: x[cta_idx : cta_idx + 1, ...]),
         CropForegroundd(
             keys=["image", "label"],
             source_key="temp_guide",

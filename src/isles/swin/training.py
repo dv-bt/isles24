@@ -199,9 +199,15 @@ def train_swin(
         scheduler.step()
         current_lr = scheduler.get_last_lr()[0]
 
+        metrics = {
+            "train/loss": train_loss,
+            "train/lr": current_lr,
+            "epoch": epoch + 1,
+        }
+
         # === Validation ===
         if (epoch + 1) % config.val_interval == 0 or epoch == config.max_epochs:
-            val_loss, dice = _validate_epoch(
+            dice, val_loss = _validate_epoch(
                 model=model,
                 val_loader=val_loader,
                 loss_fn=loss_fn,
@@ -211,19 +217,13 @@ def train_swin(
             )
             torch.cuda.empty_cache()
 
-            metrics = {
-                "train/loss": train_loss,
-                "train/lr": current_lr,
-                "val/loss": val_loss,
-                "val/dice": dice,
-                "epoch": epoch + 1,
-            }
-            wandb.log(metrics)
+            metrics["val/loss"] = val_loss
+            metrics["val/dice"] = dice
             print(
-                f"Epoch {epoch + 1}: "
-                f"train_loss={train_loss:.4f}, "
-                f"val_loss={val_loss:.4f}, "
-                f"dice={dice:.4f}"
+                f"Epoch {metrics['epoch']}: "
+                f"train_loss={metrics['train/loss']:.4f}, "
+                f"val_loss={metrics['val/loss']:.4f}, "
+                f"dice={metrics['val/dice']:.4f}"
             )
 
             # === Checkpointing ===
@@ -242,10 +242,7 @@ def train_swin(
                 config=config,
             )
 
-        else:
-            wandb.log(
-                {"train/loss": train_loss, "train/lr": current_lr, "epoch": epoch + 1}
-            )
+        wandb.log(metrics)
 
     # Upload final best model to WandB
     wandb.save(checkpoint_dir / "best_model.pt", base_path=run_dir)
@@ -282,6 +279,7 @@ def get_swin_dataloaders(datalist: dict, config: SwinTrainConfig) -> tuple[DataL
 
     return train_loader, val_loader
 
+
 def get_loss_function(config: SwinTrainConfig) -> DiceCELoss:
     """
     Get loss function for softmax segmentation.
@@ -292,7 +290,7 @@ def get_loss_function(config: SwinTrainConfig) -> DiceCELoss:
         - labels: [B, 1, H, W, D] integer class indices
     """
     return DiceCELoss(
-        include_background=True,
+        include_background=config.include_background,
         to_onehot_y=True,
         softmax=True,
         squared_pred=True,
@@ -308,7 +306,7 @@ def get_dice_metric(config: SwinTrainConfig) -> DiceMetric:
     Reports mean Dice across foreground classes only.
     """
     return DiceMetric(
-        include_background=False,
+        include_background=config.include_background,
         reduction="mean",
         num_classes=config.num_classes,
     )
