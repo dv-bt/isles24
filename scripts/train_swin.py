@@ -12,15 +12,14 @@ from isles.utils import generate_datalist
 
 
 def main():
-    run_id = "run-012"
+    run_id = "run-013"
     config = SwinTrainConfig(
         max_epochs=100,
         modalities=["cta", "cbf"],
         target_spacing=(1.0, 1.0, 1.0),
         roi_size=(64, 64, 64),
         learning_rate=4e-4,
-        num_crops_per_image=4,
-        inferer_batch_size=4,
+        include_background=False,
     )
 
     data_root = Path("/home/renku/work/data-local")
