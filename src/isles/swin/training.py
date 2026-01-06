@@ -206,7 +206,11 @@ def train_swin(
         }
 
         # === Validation ===
-        if (epoch + 1) % config.val_interval == 0 or epoch == config.max_epochs:
+        if (
+            (epoch + 1) % config.val_interval == 0
+            or epoch == config.max_epochs
+            or epoch == 0
+        ):
             dice, val_loss = _validate_epoch(
                 model=model,
                 val_loader=val_loader,
