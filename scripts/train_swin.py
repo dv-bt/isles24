@@ -12,7 +12,7 @@ from isles.utils import generate_datalist
 
 
 def main():
-    run_id = "run-013"
+    run_id = "run-014"
     config = SwinTrainConfig(
         max_epochs=100,
         modalities=["cta", "cbf"],
@@ -20,6 +20,11 @@ def main():
         roi_size=(64, 64, 64),
         learning_rate=4e-4,
         include_background=False,
+        intensity_windows={
+            "cta": [0, 90],
+            "cbf": [0, 35]
+        },
+        batch_size=2,
     )
 
     data_root = Path("/home/renku/work/data-local")
