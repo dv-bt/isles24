@@ -31,7 +31,6 @@ def _train_epoch(
     train_loader: DataLoader,
     loss_fn: torch.nn.Module,
     optimizer: torch.optim.Optimizer,
-    scaler: torch.amp.GradScaler,
     epoch: int,
     config: SwinTrainConfig,
 ) -> float:
@@ -54,15 +53,13 @@ def _train_epoch(
 
         optimizer.zero_grad()
 
-        with torch.amp.autocast(device.type, enabled=config.amp):
+        with torch.amp.autocast(device.type, dtype=torch.bfloat16, enabled=config.amp):
             logits = model(image)
             loss = loss_fn(logits, label)
 
-        scaler.scale(loss).backward()
-        scaler.unscale_(optimizer)
+        loss.backward()
         clip_grad_norm_(model.parameters(), max_norm=0.5)
-        scaler.step(optimizer)
-        scaler.update()
+        optimizer.step()
 
         epoch_loss += loss.item()
         train_pbar.set_postfix(loss=f"{loss.item():.4f}")
@@ -95,7 +92,7 @@ def _validate_epoch(
         image = batch["image"].to(device)
         label = batch["label"].to(device)
 
-        with torch.amp.autocast(device.type, enabled=config.amp):
+        with torch.amp.autocast(device.type, dtype=torch.bfloat16, enabled=config.amp):
             logits = inferer(image, model)
             loss = loss_fn(logits, label)
 
@@ -172,7 +169,6 @@ def train_swin(
         warmup_steps=int(config.max_epochs * config.warmup_ratio),
         warmup_multiplier=0.1,
     )
-    scaler = torch.amp.GradScaler(enabled=config.amp)
     inferer = SlidingWindowInferer(
         roi_size=config.roi_size,
         sw_batch_size=config.inferer_batch_size,
@@ -192,7 +188,6 @@ def train_swin(
             train_loader=train_loader,
             loss_fn=loss_fn,
             optimizer=optimizer,
-            scaler=scaler,
             epoch=epoch,
             config=config,
         )
@@ -297,8 +292,8 @@ def get_loss_function(config: SwinTrainConfig) -> DiceCELoss:
         include_background=config.include_background,
         to_onehot_y=True,
         softmax=True,
-        squared_pred=True,
-        smooth_nr=0.0,
+        squared_pred=False,
+        smooth_nr=1e-5,
         smooth_dr=1e-5,
     )
 

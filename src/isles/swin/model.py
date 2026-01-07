@@ -215,7 +215,9 @@ class MESwinUNETRPredictor:
         input_device = image.device
         image = image.to(self.device)
 
-        with torch.amp.autocast(self.device.type, enabled=self.amp):
+        with torch.amp.autocast(
+            device_type=self.device.type, dtype=torch.bfloat16, enabled=self.amp
+        ):
             logits = self.inferer(image, self.model)
 
         return logits.to(input_device)
