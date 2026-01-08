@@ -56,7 +56,7 @@ class BaseSwinUNETR(SwinUNETR):
     def from_config(cls, config: SwinTrainConfig) -> "BaseSwinUNETR":
         """Create model from config."""
         return cls(
-            in_channels=config.modalities,
+            in_channels=len(config.modalities),
             out_channels=config.num_classes,
             feature_size=config.feature_size,
         )
