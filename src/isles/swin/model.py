@@ -184,7 +184,7 @@ class MultiEncoderSwinUNETR(SwinUNETR):
         )
 
 
-class MESwinUNETRPredictor:
+class SwinUNETRPredictor:
     """
     Wrapper for Multi-encoder Swin-UNETR inference with sliding window.
 
@@ -193,7 +193,7 @@ class MESwinUNETRPredictor:
 
     def __init__(
         self,
-        model: MultiEncoderSwinUNETR,
+        model: MultiEncoderSwinUNETR | BaseSwinUNETR,
         roi_size: Sequence[int],
         overlap: float = 0.2,
         sw_batch_size: int = 2,
@@ -211,10 +211,10 @@ class MESwinUNETRPredictor:
     @classmethod
     def from_config(
         cls,
-        model: MultiEncoderSwinUNETR,
+        model: MultiEncoderSwinUNETR | BaseSwinUNETR,
         config: SwinTrainConfig,
         final: bool = False,
-    ) -> "MESwinUNETRPredictor":
+    ) -> "SwinUNETRPredictor":
         """Create predictor from config."""
         overlap = config.val_overlap_final if final else config.val_overlap
         return cls(
@@ -231,12 +231,12 @@ class MESwinUNETRPredictor:
         checkpoint_path: Path | str,
         device: str | torch.device = "cpu",
         final: bool = False,
-    ) -> "MESwinUNETRPredictor":
+    ) -> "SwinUNETRPredictor":
         """Create predictor from checkpoint"""
         checkpoint = Checkpoint.load(checkpoint_path)
         config = SwinTrainConfig(**checkpoint.config)
 
-        model = MultiEncoderSwinUNETR.from_config(config)
+        model = get_model(config)
         model.load_state_dict(checkpoint.model_state_dict)
         model = model.to(device)
 
@@ -247,7 +247,7 @@ class MESwinUNETRPredictor:
         """Get model's current device."""
         return next(self.model.parameters()).device
 
-    def to(self, device: torch.device | str) -> "MESwinUNETRPredictor":
+    def to(self, device: torch.device | str) -> "SwinUNETRPredictor":
         """Move model to device."""
         self.model = self.model.to(device)
         return self

@@ -2,6 +2,7 @@
 Code for image processing and transforms
 """
 
+from pathlib import Path
 from collections.abc import Sequence, Mapping
 import numpy as np
 from numpy.typing import DTypeLike
@@ -28,6 +29,10 @@ from monai.transforms import (
     CopyItemsd,
     DeleteItemsd,
     Lambdad,
+    Activationsd,
+    AsDiscreted,
+    Invertd,
+    SaveImaged,
 )
 from monai.utils import convert_to_dst_type
 
@@ -265,3 +270,56 @@ def get_pred_transforms() -> Compose:
             AsDiscrete(argmax=True, to_onehot=None),
         ]
     )
+
+
+def get_post_transforms(
+    config: SwinTrainConfig, out_dir: Path | None = None
+) -> Compose:
+    """
+    Build post processing transforms for prediction at original spacing.
+
+    Parameters
+    ----------
+    config : SwinTrainConfig
+        Configuration dataclass for training multi-encoder Swin-UNETR.
+    out_dir : Path | None
+        Directory where to save predictions. If None, do not save predictions to disk.
+        Default is None
+
+    Returns
+    -------
+    Compose
+        MONAI composed transforms.
+    """
+
+    val_transforms = get_val_transforms(config)
+
+    transforms = [
+        Activationsd(keys="pred", softmax=True),
+        Invertd(
+            keys="pred",
+            transform=val_transforms,
+            orig_keys="image",
+            meta_keys="pred_meta_dict",
+            orig_meta_keys="image_meta_dict",
+            meta_key_postfix="meta_dict",
+            nearest_interp=False,
+            to_tensor=True,
+        ),
+        AsDiscreted(keys="pred", argmax=True),
+    ]
+
+    if out_dir is not None:
+        transforms.append(
+            SaveImaged(
+                keys="pred",
+                meta_keys="pred_meta_dict",
+                output_dir=out_dir,
+                output_postfix="pred",
+                resample=False,
+                separate_folder=False,
+                dtype=np.uint8,
+            )
+        )
+
+    return Compose(transforms)
