@@ -18,6 +18,50 @@ from isles.swin.config import SwinTrainConfig
 from isles.swin.checkpoint import Checkpoint
 
 
+def get_model(config: SwinTrainConfig) -> nn.Module:
+    """Dispact the correct module, already instantiated."""
+
+    model_dict = {
+        "BaseSwinUNETR": BaseSwinUNETR,
+        "MultiEncoderSwinUNETR": MultiEncoderSwinUNETR,
+    }
+    model_class = model_dict[config.model]
+
+    return model_class.from_config(config)
+
+
+class BaseSwinUNETR(SwinUNETR):
+    """Base Swin-UNETR extended with convenience methods for compatibility with
+    MultiEncoderSwinUNETR
+
+    Parameters
+    ----------
+    **kwargs
+        Arguments passed to parent SwinUNETR.
+    """
+
+    def __init__(self, **kwargs) -> None:
+        super().__init__(**kwargs)
+
+    def load_pretrained_encoders(self, weights_path: str) -> None:
+        """Load SSL pretrained weights into all encoders."""
+        ssl_weights = torch.load(weights_path, weights_only=False)["state_dict"]
+
+        _, loaded, not_loaded = copy_model_state(
+            self, ssl_weights, filter_func=filter_swinunetr
+        )
+        print(f"Encoder: loaded {len(loaded)} keys, skipped {len(not_loaded)} keys")
+
+    @classmethod
+    def from_config(cls, config: SwinTrainConfig) -> "BaseSwinUNETR":
+        """Create model from config."""
+        return cls(
+            in_channels=config.modalities,
+            out_channels=config.num_classes,
+            feature_size=config.feature_size,
+        )
+
+
 class MultiEncoderSwinUNETR(SwinUNETR):
     """Swin-UNETR with multi encoders.
 

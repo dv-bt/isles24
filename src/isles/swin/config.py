@@ -4,6 +4,7 @@ Configuration classes for training and using Multi-encoder Swin-UNETR
 
 import json
 from pathlib import Path
+from typing import Literal
 from collections.abc import Sequence
 from dataclasses import dataclass, asdict
 
@@ -15,49 +16,51 @@ class SwinTrainConfig:
 
     Parameters
     ----------
-    modalities
+    modalities : Sequence[str]
         Input modality names (e.g., ["ncct", "cta"]).
-    target_spacing
+    target_spacing : Sequence[float]
         Target voxel spacing in mm.
-    intensity_windows
+    intensity_windows : dict[str, Sequence[float]] | None
         Per-modality intensity windows: {"modality": [min, max]}.
         If None, no intensity windowing is applied.
-    feature_size
+    model : Literal["BaseSwinUNETR", "MultiEncoderSwinUNETR"]
+        Model architecture.
+    feature_size : int
         Swin-UNETR embedding dimension.
-    fusion_kernel_size
+    fusion_kernel_size : int
         Kernel size for multi-encoder fusion convolution.
-    num_classes
+    num_classes : int
         Number of classes including background (2 for binary segmentation).
-    roi_size
+    roi_size : Sequence[int]
         Patch size for training and sliding window inference.
-    batch_size
+    batch_size : int
         Training batch size.
-    num_crops_per_image
+    num_crops_per_image : int
         Number of patches sampled per image.
-    crop_ratios
+    crop_ratios : Sequence[float] | None
         Per-class sampling ratios for RandCropByLabelClassesd.
         None for equal sampling.
-    max_epochs
+    max_epochs : int
         Total training epochs.
-    learning_rate
+    learning_rate : float
         Initial learning rate for AdamW.
-    weight_decay
+    weight_decay : float
         Weight decay for AdamW.
-    warmup_ratio
+    warmup_ratio : float
         Fraction of training for learning rate warmup.
-    amp
+    amp : bool
         Enable automatic mixed precision.
-    include_background
+    include_background : bool
         Include background class in Dice loss/metric.
-    val_interval
+    val_interval : 5
         Validate every N epochs.
-    val_overlap
+    val_overlap : float
         Sliding window overlap during training validation.
-    val_overlap_final
+    val_overlap_final : float
         Sliding window overlap for final evaluation.
-    inferer_batch_size
+    inferer_batch_size : int
         Batch size for sliding window inference.
-    device
+    device : str
         Device for training ("cuda", "cpu", etc.).
     """
 
@@ -69,6 +72,7 @@ class SwinTrainConfig:
     intensity_windows: dict[str, Sequence[float]] | None = None
 
     # Model architecture
+    model: Literal["BaseSwinUNETR", "MultiEncoderSwinUNETR"] = "MultiEncoderSwinUNETR"
     feature_size: int = 48
     fusion_kernel_size: int = 1
     num_classes: int = 2
