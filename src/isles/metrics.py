@@ -12,6 +12,7 @@ from panoptica import (
     Panoptica_Evaluator,
     ConnectedComponentsInstanceApproximator,
     NaiveThresholdMatching,
+    Metric,
 )
 
 
@@ -69,7 +70,7 @@ def compute_dice_f1_instance_difference(ground_truth, prediction, empty_value=1.
     prediction: array-like, bool
         Any other array of identical size as 'ground_truth'. If not int, it will be converted.
     empty_value : scalar, float.
-    
+
     Returns
     -------
     f1_score : float
@@ -84,32 +85,38 @@ def compute_dice_f1_instance_difference(ground_truth, prediction, empty_value=1.
         Maximum similarity = 1
         No similarity = 0
         If both images are empty (sum equal to zero) = empty_value
+
     -------
     instance_count_difference : int
         Absolute instance count difference as integer.
         Maximum similarity = 0
         No similarity = --> inf
-        
+
     """
-    
+
     ground_truth = np.asarray(ground_truth).astype(int)
     prediction = np.asarray(prediction).astype(int)
 
     evaluator = Panoptica_Evaluator(
-    expected_input=InputType.SEMANTIC,
-    instance_approximator=ConnectedComponentsInstanceApproximator(),
-    instance_matcher=NaiveThresholdMatching(),
+        expected_input=InputType.SEMANTIC,
+        instance_approximator=ConnectedComponentsInstanceApproximator(),
+        instance_matcher=NaiveThresholdMatching(
+            matching_metric=Metric.IOU,
+            matching_threshold=0.2,
+        ),
     )
-    
-    result, _ = evaluator.evaluate(prediction, ground_truth, verbose=False)["ungrouped"]
-    
-    instance_count_difference = abs(result.num_ref_instances - result.num_pred_instances) # compute lesion count difference
-    
-    if result.num_ref_instances== 0 and result.num_pred_instances==0:
+
+    result = evaluator.evaluate(prediction, ground_truth, verbose=False)["ungrouped"]
+
+    instance_count_difference = abs(
+        result.num_ref_instances - result.num_pred_instances
+    )
+
+    if result.num_ref_instances == 0 and result.num_pred_instances == 0:
         f1_score = empty_value
         dice_score = empty_value
     else:
-        f1_score = result.rq # get f1-score        
+        f1_score = result.rq  # get f1-score
         dice_score = result.global_bin_dsc
-    
+
     return f1_score, instance_count_difference, dice_score

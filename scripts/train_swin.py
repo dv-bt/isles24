@@ -8,6 +8,7 @@ import wandb
 from isles.swin.config import SwinTrainConfig
 from isles.swin.model import get_model
 from isles.swin.training import train_swin, get_swin_dataloaders
+from isles.swin.evaluation import final_evaluation
 from isles.utils import generate_datalist
 
 
@@ -68,6 +69,16 @@ def main():
         train_loader=train_loader,
         val_loader=val_loader,
     )
+
+    checkpoint_path = run_dir / "checkpoints/best_model.pt"
+    eval_dir = run_dir / "evaluation"
+    final_evaluation(
+        checkpoint_path=checkpoint_path,
+        val_loader=val_loader,
+        config=config,
+        out_dir=eval_dir,
+    )
+    wandb.save(f"{eval_dir}/**/*", base_path=run_dir)
 
 
 if __name__ == "__main__":

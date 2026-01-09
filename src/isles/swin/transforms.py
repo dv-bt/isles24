@@ -22,8 +22,6 @@ from monai.transforms import (
     RandScaleIntensityd,
     RandShiftIntensityd,
     RandCropByLabelClassesd,
-    EnsureType,
-    AsDiscrete,
     CastToTyped,
     SpatialPadd,
     CopyItemsd,
@@ -35,6 +33,7 @@ from monai.transforms import (
     SaveImaged,
 )
 from monai.utils import convert_to_dst_type
+from monai.data import DataLoader
 
 from isles.swin.config import SwinTrainConfig
 
@@ -260,28 +259,17 @@ class PerChannelScaleIntensityd(MapTransform):
         return d
 
 
-def get_pred_transforms() -> Compose:
-    """
-    Convert model output logits to discrete predictions.
-    """
-    return Compose(
-        [
-            EnsureType(),
-            AsDiscrete(argmax=True, to_onehot=None),
-        ]
-    )
-
-
 def get_post_transforms(
-    config: SwinTrainConfig, out_dir: Path | None = None
+    val_loader: DataLoader, out_dir: Path | None = None
 ) -> Compose:
     """
     Build post processing transforms for prediction at original spacing.
 
     Parameters
     ----------
-    config : SwinTrainConfig
-        Configuration dataclass for training multi-encoder Swin-UNETR.
+    val_loader : DataLoader
+        Validation dataloader. This is necessary to read the correct transforms to
+        invert.
     out_dir : Path | None
         Directory where to save predictions. If None, do not save predictions to disk.
         Default is None
@@ -292,7 +280,7 @@ def get_post_transforms(
         MONAI composed transforms.
     """
 
-    val_transforms = get_val_transforms(config)
+    val_transforms = val_loader.dataset.transform
 
     transforms = [
         Activationsd(keys="pred", softmax=True),

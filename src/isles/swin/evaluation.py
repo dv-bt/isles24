@@ -8,11 +8,10 @@ from tqdm import tqdm
 import numpy as np
 import pandas as pd
 
-from monai.data import DataLoader, decollate_batch
+from monai.data import DataLoader, decollate_batch, MetaTensor
 from monai.transforms import (
     Compose,
     LoadImage,
-    EnsureChannelFirst,
     EnsureType,
 )
 
@@ -59,13 +58,13 @@ def final_evaluation(
         checkpoint_path=checkpoint_path, device=device, final=True
     )
 
-    out_dir.mkdir(exist_ok=True, parents=True)
-    post_transforms = get_post_transforms(config=config, out_dir=out_dir)
+    pred_dir = out_dir / "predictions"
+    pred_dir.mkdir(exist_ok=True, parents=True)
+    post_transforms = get_post_transforms(val_loader=val_loader, out_dir=pred_dir)
 
     load_label_transforms = Compose(
         [
-            LoadImage(image_only=False),
-            EnsureChannelFirst(),
+            LoadImage(image_only=False, ensure_channel_first=True),
             EnsureType(),
         ]
     )
@@ -78,7 +77,8 @@ def final_evaluation(
         image = batch["image"].to(device)
         logits = predictor.predict_logits(image)
 
-        batch["pred"] = logits.cpu()
+        batch["pred"] = MetaTensor(logits.cpu(), meta=batch["image"].meta.copy())
+        batch["pred"].applied_operations = batch["image"].applied_operations.copy()
         batch["image"] = batch["image"].cpu()
 
         batch_list = decollate_batch(batch)
@@ -86,11 +86,15 @@ def final_evaluation(
         for sample in batch_list:
             label_path = sample["label"].meta["filename_or_obj"]
             case_id = re.search(r"sub-stroke\d+", label_path).group()
-            sample = post_transforms(sample)
-            original_label = load_label_transforms(label_path)
 
+            sample = post_transforms(sample)
+            original_label = load_label_transforms(label_path)[0]
+            if isinstance(original_label, list):
+                original_label: MetaTensor = original_label[0]
+
+            # Voxel size in mL (convert from mm^3)
             voxel_spacing = np.array(original_label.meta["pixdim"][1:4])
-            voxel_size = np.prod(voxel_spacing)
+            voxel_size = np.prod(voxel_spacing) / 1000
 
             pred_np = sample["pred"].squeeze().numpy().astype(int)
             label_np = original_label.squeeze().numpy().astype(int)

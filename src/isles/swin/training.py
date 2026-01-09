@@ -112,8 +112,8 @@ def train_swin(
     run_dir: Path | str,
     train_loader: DataLoader,
     val_loader: DataLoader,
-    save_predictions: bool = True,
-):
+    upload_checkpoints: bool = True,
+) -> None:
     """
     Train a binary segmentation model.
 
@@ -129,20 +129,9 @@ def train_swin(
         Training data loader.
     val_loader : DataLoader
         Validation data loader.
-    orig_loader : DataLoader | None
-        Optional validation data loader with the original image spacing.
-        This is used at the end of training to calculate the dice score of the best
-        model at the original image resolution. If None, this is skipped.
-        Default is None.
-    save_predictions : bool
-        Save predictions of the best model at the original spacing. This is only
-        used if orig_loader is not None.
+    upload_checkpoints : bool
+        Whether to upload the best checkpoint to Weights and Biases.
         Default is True.
-
-    Returns
-    -------
-    dict
-        Training summary with best dice and checkpoint path.
     """
     if isinstance(run_dir, str):
         run_dir = Path(run_dir)
@@ -244,7 +233,8 @@ def train_swin(
         wandb.log(metrics)
 
     # Upload final best model to WandB
-    wandb.save(checkpoint_dir / "best_model.pt", base_path=run_dir)
+    if upload_checkpoints:
+        wandb.save(checkpoint_dir / "best_model.pt", base_path=run_dir)
 
 
 def get_swin_dataloaders(datalist: dict, config: SwinTrainConfig) -> tuple[DataLoader]:
