@@ -16,7 +16,7 @@ def main():
     run_id = "run-018"
     config = SwinTrainConfig(
         model="BaseSwinUNETR",
-        max_epochs=300,
+        max_epochs=500,
         modalities=["cta", "cbf"],
         target_spacing=(1.0, 1.0, 1.0),
         roi_size=(64, 64, 64),
