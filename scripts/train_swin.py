@@ -13,17 +13,20 @@ from isles.utils import generate_datalist
 
 
 def main():
-    run_id = "run-017"
+    run_id = "run-018"
     config = SwinTrainConfig(
         model="BaseSwinUNETR",
         max_epochs=300,
-        modalities=["cta"],
+        modalities=["cta", "cbf"],
         target_spacing=(1.0, 1.0, 1.0),
         roi_size=(64, 64, 64),
         learning_rate=1e-4,
         crop_ratios=(1, 3),
         include_background=False,
-        intensity_windows={"cta": [0, 90]},
+        intensity_windows={
+            "cta": [0, 90],
+            "cbf": [0, 35],
+        },
         batch_size=1,
     )
 
