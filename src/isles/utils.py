@@ -2,6 +2,7 @@
 Utility functions
 """
 
+import re
 import logging
 from typing import Any
 from collections.abc import Iterable, Iterator
@@ -39,43 +40,127 @@ def _assign_fold(
     return data
 
 
-def _build_path_dict(case_dir: Path, modalities: list[str] | str) -> dict:
-    """Build dictionary with for a single case with paths pointing to the right images"""
+def _get_image_path(case_dir: Path, modality: str) -> str:
+    """Get image path for a given case and modality or label.
+
+    Parameters
+    ----------
+    case_dir : Path
+        Full path to the case directory
+    modality : str
+        Modality to access. If set to "label", the function will return the lesion masks
+        instead.
+
+    Returns
+    -------
+    image_path : str
+        The full path to the image as a string
+
+    Raises
+    ------
+    AssertionError
+        If the path doesn't exist
+    """
+
+    case_name = case_dir.name
+    perfusion_maps = ["cbf", "cbv", "mtt", "tmax"]
+
+    paths = {
+        "ncct": (
+            case_dir.parents[1]
+            / f"raw_data/{case_name}/ses-01/{case_name}_ses-01_ncct.nii.gz"
+        ),
+        "cta": case_dir / f"ses-01/{case_name}_ses-01_space-ncct_cta.nii.gz",
+        "label": case_dir / f"ses-02/{case_name}_ses-02_space-ncct_lesion-msk.nii.gz",
+        **{
+            mod: (
+                case_dir
+                / f"ses-01/perfusion-maps/{case_name}_ses-01_space-ncct_{mod}.nii.gz"
+            )
+            for mod in perfusion_maps
+        },
+    }
+
+    image_path = paths[modality]
+    assert image_path.exists()
+    return str(image_path)
+
+
+def _build_path_dict(
+    case_dir: Path, modalities: list[str] | str, process_guide: str | None = None
+) -> dict[str, str | list[str]]:
+    """
+    Build dictionary with for a single case with paths pointing to the right images and
+    labels.
+
+    Parameters
+    ----------
+    case_dir : Path
+        Full path to the case directory.
+    modalities : list[str] | str
+        Modalities to consider for the multichannel image.
+    process_guide : str | None
+        Modality to add as a "guide" key, used as an explicit guide for processing
+        steps like foreground crop. If None, the "guide" key will not be added.
+        Default is None.
+
+    Returns
+    -------
+    path_dict : dict
+        Dictionary with keys:
+        - "image": list of image paths as strings
+        - "label": path to the label
+        - "guide": path to image to be used as guide for processing, optional.
+
+    Raises
+    ------
+    AssertionError
+        If any of the requested paths does not exist.
+    """
 
     if isinstance(modalities, str):
         modalities = [modalities]
 
-    case_name = case_dir.name
-
     img_paths = []
     for modality in modalities:
-        if modality == "ncct":
-            img_path = (
-                case_dir.parents[1]
-                / f"raw_data/{case_name}/ses-01/{case_name}_ses-01_ncct.nii.gz"
-            )
-        else:
-            if modality == "cta":
-                img_name = f"ses-01/{case_name}_ses-01_space-ncct_cta.nii.gz"
-            else:
-                img_name = f"ses-01/perfusion-maps/{case_name}_ses-01_space-ncct_{modality}.nii.gz"
-            img_path = case_dir / img_name
-        assert img_path.exists()
-        img_paths.append(str(img_path))
+        img_paths.append(_get_image_path(case_dir, modality))
 
     path_dict = {
         "image": img_paths,
-        "label": str(
-            case_dir / f"ses-02/{case_name}_ses-02_space-ncct_lesion-msk.nii.gz"
-        ),
+        "label": _get_image_path(case_dir, "label"),
     }
+
+    if process_guide is not None:
+        path_dict["guide"] = _get_image_path(case_dir, process_guide)
+
     return path_dict
+
+
+def patch_guide(datalist: dict, process_guide: str) -> dict:
+    """Patch processing guide if the loaded datalist doesn't have any"""
+
+    if "process_guide" in datalist.keys():
+        print(
+            "Datalist has already a specified processing guide: "
+            f"{datalist['process_guide']}"
+        )
+        return datalist
+
+    datalist["process_guide"] = process_guide
+    for split in ["training", "validation", "testing"]:
+        for case in datalist[split]:
+            case_dir = re.match(r"(.*)/ses-02/", case["label"]).group(1)
+            split["guide"] = _get_image_path(case_dir=case_dir, modality=process_guide)
+
+    print(f"Patched datalist with processing guide: {process_guide}")
+    return datalist
 
 
 def generate_datalist(
     data_root: Path,
     target_dir: Path,
     modalities: list[str] | str,
+    process_guide: str | None = None,
     n_folds: int = 5,
     val_fold: int | None = None,
     test_fold: int | None = None,
@@ -103,6 +188,9 @@ def generate_datalist(
         "validation": [],
         "testing": [],
     }
+    if process_guide is not None:
+        datalist_dict["process_guide"] = process_guide
+
     for case_dir in case_dirs:
         case_name = case_dir.name
 
@@ -111,7 +199,11 @@ def generate_datalist(
             print(f"{case_name} excluded")
             continue
 
-        path_dict = _build_path_dict(case_dir, modalities=modalities)
+        path_dict = _build_path_dict(
+            case_dir, modalities=modalities, process_guide=process_guide
+        )
+
+        # Assign case to train, test, or validation split.
         fold = int(demo_data.loc[case_name, "Fold"])
         path_dict["fold"] = fold
         if val_fold is not None and (val_fold == fold):

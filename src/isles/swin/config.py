@@ -23,6 +23,10 @@ class SwinTrainConfig:
     intensity_windows : dict[str, Sequence[float]] | None
         Per-modality intensity windows: {"modality": [min, max]}.
         If None, no intensity windowing is applied.
+    fg_guide : str
+        Modality to use as guide for foreground cropping.
+    fg_threshold : int | float
+        Threshold for foreground crop: fg = image > fg_threshold.
     model : Literal["BaseSwinUNETR", "MultiEncoderSwinUNETR"]
         Model architecture.
     feature_size : int
@@ -70,6 +74,8 @@ class SwinTrainConfig:
     # Data preprocessing
     target_spacing: Sequence[float] = (1.0, 1.0, 1.0)
     intensity_windows: dict[str, Sequence[float]] | None = None
+    fg_guide: str = ("cta",)
+    fg_threshold: int = (-500,)
 
     # Model architecture
     model: Literal["BaseSwinUNETR", "MultiEncoderSwinUNETR"] = "MultiEncoderSwinUNETR"

@@ -24,9 +24,7 @@ from monai.transforms import (
     RandCropByLabelClassesd,
     CastToTyped,
     SpatialPadd,
-    CopyItemsd,
     DeleteItemsd,
-    Lambdad,
     Activationsd,
     AsDiscreted,
     Invertd,
@@ -53,23 +51,17 @@ def get_train_transforms(config: SwinTrainConfig):
         MONAI composed transforms.
     """
 
-    # Use CTA to guide crop, should improve this logic later
-    cta_idx = config.modalities.index("cta")
-    cta_background = -500
-
     transforms = [
-        LoadImaged(keys=["image", "label"], image_only=False),
-        EnsureChannelFirstd(keys=["image", "label"]),
-        Orientationd(keys=["image", "label"], axcodes="RAS", labels=None),
-        CopyItemsd(keys=["image"], times=1, names=["temp_guide"]),
-        Lambdad(keys=["temp_guide"], func=lambda x: x[cta_idx : cta_idx + 1, ...]),
+        LoadImaged(keys=["image", "label", "guide"], image_only=False),
+        EnsureChannelFirstd(keys=["image", "label", "guide"]),
+        Orientationd(keys=["image", "label", "guide"], axcodes="RAS", labels=None),
         CropForegroundd(
             keys=["image", "label"],
-            source_key="temp_guide",
-            select_fn=lambda x: x > cta_background,
+            source_key="guide",
+            select_fn=lambda x: x > config.fg_threshold,
             margin=10,
         ),
-        DeleteItemsd(keys=["temp_guide"]),
+        DeleteItemsd(keys=["guide"]),
         PerChannelScaleIntensityd(
             keys=["image"],
             modalities=config.modalities,
@@ -130,23 +122,17 @@ def get_val_transforms(config: SwinTrainConfig):
         MONAI composed transforms.
     """
 
-    # Use CTA to guide crop, should improve this logic later
-    cta_idx = config.modalities.index("cta")
-    cta_background = -500
-
     transforms = [
-        LoadImaged(keys=["image", "label"], image_only=False),
-        EnsureChannelFirstd(keys=["image", "label"]),
-        Orientationd(keys=["image", "label"], axcodes="RAS", labels=None),
-        CopyItemsd(keys=["image"], times=1, names=["temp_guide"]),
-        Lambdad(keys=["temp_guide"], func=lambda x: x[cta_idx : cta_idx + 1, ...]),
+        LoadImaged(keys=["image", "label", "guide"], image_only=False),
+        EnsureChannelFirstd(keys=["image", "label", "guide"]),
+        Orientationd(keys=["image", "label", "guide"], axcodes="RAS", labels=None),
         CropForegroundd(
             keys=["image", "label"],
-            source_key="temp_guide",
-            select_fn=lambda x: x > cta_background,
+            source_key="guide",
+            select_fn=lambda x: x > config.fg_threshold,
             margin=10,
         ),
-        DeleteItemsd(keys=["temp_guide"]),
+        DeleteItemsd(keys=["guide"]),
         PerChannelScaleIntensityd(
             keys=["image"],
             modalities=config.modalities,
@@ -259,9 +245,7 @@ class PerChannelScaleIntensityd(MapTransform):
         return d
 
 
-def get_post_transforms(
-    val_loader: DataLoader, out_dir: Path | None = None
-) -> Compose:
+def get_post_transforms(val_loader: DataLoader, out_dir: Path | None = None) -> Compose:
     """
     Build post processing transforms for prediction at original spacing.
 
